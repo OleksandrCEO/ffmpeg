@@ -9,7 +9,6 @@ built in.
 | Release | FFmpeg | Platforms | Licence |
 |---|---|---|---|
 | `8.1.3-lgpl` | 8.1.3 (release tarball) | linux64, win64 | LGPL-2.1-or-later |
-| `n8.1.3-18-g46d899d7a0` | superseded — see below | | |
 
 Each release holds the builds (one archive per platform), `ffmpeg-<version>.tar.xz` (the source, as ffmpeg.org
 publishes it) and `SHA256SUMS`.
@@ -41,7 +40,3 @@ and its source can be downloaded from this repository's releases."
 FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project. Patent licensing of the codecs is not
 granted by FFmpeg or by this repository.
 
-## The superseded release
-
-`n8.1.3-18-g46d899d7a0` mirrored BtbN's "lgpl-shared" builds. Those link chromaprint built with FFTW, which is GPL, so
-they are not LGPL-only. Use the builds above.
