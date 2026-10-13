@@ -1,33 +1,47 @@
 # FFmpeg builds
 
-Pinned LGPL builds of [FFmpeg](https://ffmpeg.org) that applications download at run time, with the exact source
-they were built from. The builds are [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) "lgpl-shared"
-builds, mirrored here unchanged so that a version stays available once its upstream release is pruned.
+LGPL builds of [FFmpeg](https://ffmpeg.org) that applications download at run time, with everything needed to know
+what is in them and to build them again: FFmpeg's release source, the build script, and the licences of the libraries
+built in.
 
 ## Releases
 
-Each release holds, for one FFmpeg version:
-
-- the builds, one archive per platform, exactly as BtbN published them (their `SHA256SUMS` line is the check);
-- `ffmpeg-<version>-source.tar.gz` — the FFmpeg source at the commit the builds report (`ffmpeg -version`);
-- `btbn-ffmpeg-builds-<commit>.tar.gz` — BtbN's build scripts at the commit that made them: the configure line, the
-  libraries built in and their versions;
-- `SHA256SUMS`.
-
-| Release | FFmpeg | Platforms | Built |
+| Release | FFmpeg | Platforms | Licence |
 |---|---|---|---|
-| `n8.1.3-18-g46d899d7a0` | n8.1.3-18-g46d899d7a0 (release/8.1 branch) | linux64, win64 | BtbN autobuild 2026-10-13 |
+| `8.1.3-lgpl` | 8.1.3 (release tarball) | linux64, win64 | LGPL-2.1-or-later |
+| `n8.1.3-18-g46d899d7a0` | superseded — see below | | |
+
+Each release holds the builds (one archive per platform), `ffmpeg-<version>.tar.xz` (the source, as ffmpeg.org
+publishes it) and `SHA256SUMS`.
+
+## What is in a build
+
+Only what a video editor's render needs, every library named (`build.sh`, `--disable-autodetect`):
+FFmpeg's own decoders, encoders and filters; dav1d, Opus, SVT-AV1, OpenH264; FreeType and HarfBuzz for `drawtext`;
+zlib; NVIDIA (NVENC/NVDEC/CUDA), AMD (AMF), Intel (oneVPL/QSV) hardware codecs, VAAPI on Linux, D3D11VA, DXVA2 and
+Media Foundation on Windows. No GPL or non-free parts (no x264, no x265), no `--enable-version3`.
+
+`ffmpeg` and `ffprobe` are in `bin/`, FFmpeg's shared libraries in `lib/` (Linux) or `bin/` (Windows); the
+third-party libraries are linked into them statically — all under permissive licences, their texts in `licenses/`.
+
+## Building
+
+`./build.sh linux64` or `./build.sh win64` with docker and `ffmpeg-8.1.3.tar.xz` from https://ffmpeg.org/releases/
+beside it: it compiles FFmpeg in BtbN's toolchain image ([BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds),
+pinned by digest), which holds those libraries prebuilt.
 
 ## Licence
 
-FFmpeg is licensed under the GNU Lesser General Public License; these builds are configured with `--enable-version3`
-and without GPL or non-free parts (no `--enable-gpl`, no `--enable-nonfree`: no x264, no x265), so they are
-**LGPL-3.0-or-later** — see [`LICENSE`](LICENSE) and the `LICENSE.txt` in each archive. The libraries built in carry
-their own licences, listed by BtbN's scripts.
-
-These builds are separate programs, run as their own processes; they are not modified, and they are not renamed.
-"This software uses code of [FFmpeg](https://ffmpeg.org) licensed under the
-[LGPLv3](https://www.gnu.org/licenses/lgpl-3.0.html) and its source can be downloaded from this repository's releases."
+FFmpeg is licensed under the GNU Lesser General Public License version 2.1 or later — see [`LICENSE`](LICENSE) and the
+`LICENSE.txt` in each archive; the libraries built in are under their own licences (`licenses/`). The builds are
+separate programs, run as their own processes, not modified and not renamed. "This software uses code of
+[FFmpeg](https://ffmpeg.org) licensed under the [LGPLv2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html)
+and its source can be downloaded from this repository's releases."
 
 FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project. Patent licensing of the codecs is not
 granted by FFmpeg or by this repository.
+
+## The superseded release
+
+`n8.1.3-18-g46d899d7a0` mirrored BtbN's "lgpl-shared" builds. Those link chromaprint built with FFTW, which is GPL, so
+they are not LGPL-only. Use the builds above.
