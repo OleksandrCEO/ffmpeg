@@ -1,0 +1,55 @@
+# Builds the macOS archives with build-macos.sh, checks them as shipped and keeps them as the run's artifacts; they are
+# added to the release by hand, with SHA256SUMS.
+name: macOS builds
+on: workflow_dispatch
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: arm64, runner: macos-15 }
+          - { arch: x86_64, runner: macos-15-intel }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Tools
+        run: brew install meson ninja nasm cmake pkgconf
+      - name: Build
+        run: ./build-macos.sh ${{ matrix.arch }}
+      - name: Check the archive
+        run: |
+          set -euxo pipefail
+          # Unpacked elsewhere and the build tree gone: nothing may point back into it
+          rm -rf work
+          cd "$RUNNER_TEMP" && tar -xf "$GITHUB_WORKSPACE"/out/*.tar.xz && cd ffmpeg-*-lgpl-shared
+          ls bin lib include licenses LICENSE.txt
+          [[ $(lipo -archs bin/ffmpeg) == ${{ matrix.arch }} ]]
+          bin/ffmpeg -hide_banner -version | tee version.txt
+          grep -q "LGPL version 2.1 or later" version.txt
+          if grep -E -- "--enable-(gpl|version3|nonfree)" version.txt; then exit 1; fi
+          # Only macOS's own libraries and frameworks, and FFmpeg's libraries by @rpath
+          files=$(find bin lib -type f \( -perm -u+x -o -name '*.dylib' \))
+          otool -L $files | grep -E '^[[:space:]]' | sort -u
+          if otool -L $files | grep -E '^[[:space:]]' | grep -vE '^[[:space:]]+(/System/Library/Frameworks/|/usr/lib/|@rpath/lib(av|sw)[a-z]+\.[0-9]+\.dylib)'; then exit 1; fi
+          otool -l bin/ffmpeg | grep -A2 LC_RPATH | grep '@loader_path/../lib'
+          for f in $files; do otool -l "$f" | grep -A4 LC_BUILD_VERSION | grep 'minos 12.0' >/dev/null || { echo "$f: not macOS 12"; exit 1; }; done
+          bin/ffmpeg -hide_banner -encoders | grep -E 'libsvtav1|libopenh264|libopus|videotoolbox|_at '
+          # Encodes: AV1 + Opus webm, decoded back by dav1d; OpenH264; AAC by AudioToolbox; text by FreeType + HarfBuzz
+          src=(-f lavfi -i testsrc2=size=640x360:rate=25:duration=2 -f lavfi -i sine=duration=2)
+          bin/ffmpeg -hide_banner -y "${src[@]}" -c:v libsvtav1 -preset 10 -c:a libopus av1.webm
+          bin/ffmpeg -hide_banner -c:v libdav1d -i av1.webm -f null -
+          bin/ffprobe -hide_banner -show_entries stream=codec_name -of csv av1.webm | tee probe.txt
+          grep -q av1 probe.txt && grep -q opus probe.txt
+          bin/ffmpeg -hide_banner -y "${src[@]}" -c:v libopenh264 -c:a aac_at h264.mp4
+          bin/ffmpeg -hide_banner -y "${src[@]}" -vf "drawtext=fontfile=/System/Library/Fonts/Menlo.ttc:text=MagLine:fontsize=48:fontcolor=white" -c:v libopenh264 text.mp4
+          # Hardware: GitHub's macOS VMs may have no VideoToolbox encoder, so a failure here is only a warning
+          bin/ffmpeg -hide_banner -y "${src[@]}" -c:v h264_videotoolbox -allow_sw 1 -b:v 2M vt.mp4 || echo "::warning::h264_videotoolbox failed on this runner"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ffmpeg-macos-${{ matrix.arch }}
+          path: out/*.tar.xz
+          if-no-files-found: error
