@@ -25,14 +25,18 @@ jobs:
           set -euxo pipefail
           # Unpacked elsewhere and the build tree gone: nothing may point back into it
           rm -rf work
-          cd "$RUNNER_TEMP" && tar -xf "$GITHUB_WORKSPACE"/out/*.tar.xz && cd ffmpeg-*-lgpl-shared
+          # As the app unpacks it, with macOS's own bsdtar
+          cd "$RUNNER_TEMP" && mkdir pkg && tar -xf "$GITHUB_WORKSPACE"/out/*.tar.xz --strip-components=1 -C pkg && cd pkg
           ls bin lib include licenses LICENSE.txt
           [[ $(lipo -archs bin/ffmpeg) == ${{ matrix.arch }} ]]
           bin/ffmpeg -hide_banner -version | tee version.txt
-          grep -q "LGPL version 2.1 or later" version.txt
           if grep -E -- "--enable-(gpl|version3|nonfree)" version.txt; then exit 1; fi
+          bin/ffmpeg -hide_banner -L | tee license.txt
+          grep "terms of the GNU Lesser General Public" license.txt && grep "version 2.1 of the License" license.txt
           # Only macOS's own libraries and frameworks, and FFmpeg's libraries by @rpath
           files=$(find bin lib -type f \( -perm -u+x -o -name '*.dylib' \))
+          # Each library's own licence string (avutil_license() and the like)
+          for f in lib/*.dylib; do [[ -L $f ]] || grep -aq "license: LGPL version 2.1 or later" "$f" || { echo "$f: not LGPL 2.1+"; exit 1; }; done
           otool -L $files | grep -E '^[[:space:]]' | sort -u
           if otool -L $files | grep -E '^[[:space:]]' | grep -vE '^[[:space:]]+(/System/Library/Frameworks/|/usr/lib/|@rpath/lib(av|sw)[a-z]+\.[0-9]+\.dylib)'; then exit 1; fi
           otool -l bin/ffmpeg | grep -A2 LC_RPATH | grep '@loader_path/../lib'

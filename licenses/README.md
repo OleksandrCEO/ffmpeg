@@ -20,3 +20,7 @@ its digest), each under its own permissive licence — the texts are in this fol
 | nv-codec-headers | from git | MIT | `nv-codec-headers.txt` |
 
 GCC's runtime (libstdc++, libatomic, libgomp) is linked under the GCC Runtime Library Exception.
+
+The macOS builds compile these libraries from their release source instead (`build-macos.sh` pins each by SHA-256):
+dav1d 1.5.4, FreeType 2.14.3, HarfBuzz 14.5.0, Opus 1.6.1, OpenH264 2.6.0, SVT-AV1 4.2.0, zlib 1.3.2 — the licences
+above. libva, libdrm, libvpl, X11, AMF and nv-codec-headers are not in them; the C++ runtime is macOS's own libc++.
